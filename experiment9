@@ -1,0 +1,114 @@
+;显示字符及颜色
+
+;其他人写：
+assume cs:codesg,ds:data,ss:stack
+
+data segment
+    db 'welcome to masm!'
+    db 2,24h,71h
+data ends
+
+stack segment
+    db 16 dup(0)
+stack ends
+
+codesg segment
+
+start:    mov ax,stack
+        mov ss,ax
+        mov sp,0
+
+        mov ax,data
+        mov ds,ax
+
+        mov cx,3
+        mov ax,0b800h
+        mov es,ax
+        mov si,10h
+        mov ax,0
+
+      s:mov ah,ds:[si]
+        push cx
+        push si
+        mov cx,16
+        mov si,0
+        mov bx,0
+        mov di,1
+
+inputch:mov al,[bx]
+        mov es:[bx+si],al
+        mov es:[bx+di],ah
+        inc bx
+        inc si
+        inc di
+        loop inputch
+
+        pop si
+        inc si
+        pop cx
+        mov dx,es
+        add dx,0ah
+        mov es,dx
+        loop s
+
+        s1:jmp short s1
+codesg ends
+
+end start
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;我的：
+assume cs:codesg
+
+data segment
+    db 'welcome to masm!'
+data ends
+
+codesg segment
+    start:    mov ax,0b800h
+            mov ds,ax
+            mov di,0
+
+            mov ax,data
+            mov es,ax
+            mov si,0
+
+            mov cx,7
+         s1:mov al,es:[si]
+            mov ds:[di],al
+            mov byte ptr ds:[di+1],00000010b
+            add di,2
+            inc si
+            loop s1
+
+            mov byte ptr ds:[15],00000000b
+
+            mov si,8
+            mov di,16
+            mov cx,2
+         s2:mov al,es:[si]
+            mov ds:[di],al
+            mov byte ptr ds:[di+1],10100100b
+            add di,2
+            inc si
+            loop s2
+
+            mov byte ptr ds:[21],00000000b
+
+            mov si,11
+            mov di,22
+            mov cx,5
+         s3:mov al,es:[si]
+            mov ds:[di],al
+            mov byte ptr ds:[di+1],01110001b
+            add di,2
+            inc si
+            loop s3
+
+         s4:jmp short s4
+
+            mov ax,4c00h
+            int 21h
+codesg ends
+
+end start
