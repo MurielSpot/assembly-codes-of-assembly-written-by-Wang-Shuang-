@@ -1,0 +1,308 @@
+assume cs:code
+
+data segment
+    db '1975','1976','1977','1978','1979','1980','1981','1982','1983'
+    db '1984','1985','1986','1987','1988','1989','1990','1982','1992'
+    db '1993','1994','1995'
+    ;以上是表示21年的21个字符串
+
+    dd 16,22,382,1356,2390,8000,16000,24486,50065,97479,140417,197514
+    dd 345980,590827,803530,1183000,2759000,3753000,3753000,4649000,5937000
+    ;以上是表示21年公司总收入的21个dword型数据
+
+    dw 3,7,9,13,28,38,130,220,476,778,1001,1442,2258,2793,4037,5635,8226
+    dw 11542,14430,15257,17800
+    ;以上是表示21年公司雇员人数的21个word型数据
+
+data ends
+
+table1 segment
+    db 21 dup ('xxxx xxxx xx xx ')
+table1 ends
+
+table2 segment
+    db 21 dup ('xxxx      xx        x         x         ')
+table2 ends
+
+code segment
+
+;subf:    dw wtable1,wtable2,showt1,divdw,numToStr
+
+start:
+    mov ax,data
+    mov es,ax
+    mov di,0
+
+    mov ax,table1
+    mov ds,ax
+    mov si,0
+
+    call wttable1
+
+    mov ax,table1
+    mov es,ax
+    mov di,0
+
+    mov ax,table2
+    mov ds,ax
+    mov si,0
+
+    call wttable2
+
+    mov ax,table2
+    mov es,ax
+    mov di,0
+    mov ax,0b800h
+    mov ds,ax
+    mov si,0
+
+    call showt1
+
+    mov ax,4c00h
+    int 21h
+;功能：将存储器中的内容显示到屏幕上
+;入口参数：es：di指向存储内容，ds：si指向显存
+;显示格式：每20列一组数字，共四组，正好80列。共21行。存储器中字符格式间table2
+showt1:   
+    push ax
+
+    mov cx,21
+    mov di,0
+    mov si,530
+    showt1_s1:
+        push cx
+
+        mov cx,40
+        showt1_s1_1:
+            mov al,es:[di]
+            mov ds:[si],al
+            mov ds:[si+1],byte ptr 00000011b
+
+            inc di
+            add si,2
+            loop showt1_s1_1
+
+        mov cx,40
+        showt1_s1_2:
+            mov ds:[di],byte ptr ' '
+            add si,2
+            loop showt1_s1_2
+
+        pop cx
+        loop showt1_s1
+
+    pop ax
+    ret
+
+;功能：将table1中的内容转变格式下乳table2中
+;入口参数：es：di指向table1，ds：si指向table2
+;显示格式：每十个字节存储一个数字字符串
+;注：要和wtable1配合使用。第2、3、4组数字都需要转换为字符串。
+wttable2:
+    push cx
+
+    mov cx,21
+    mov di,0
+    mov si,0
+    wttable2_s1:
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,2
+        add si,2
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,14
+        add si,38
+        loop wttable2_s1
+
+    mov cx,21
+    mov di,5
+    mov si,10
+    wttable2_s2:
+        push cx
+
+        mov ax,es:[di]
+        mov dx,es:[di+2]
+
+        push di
+        push si    ;注意！！！numTuStr会改变si，di的值。所以以后无论写什么函数，都最好知道寄存器在退出函数时有什么改变，以防程序老出错。
+        call numToStr
+        pop si
+        pop di
+
+        add di,16
+        add si,40
+
+        pop cx
+        loop wttable2_s2
+
+    mov cx,21
+    mov di,10
+    mov si,20
+    wttable2_s3:
+        push cx
+
+        mov ax,es:[di]
+        mov dx,0
+
+        push di
+        push si
+        call numToStr
+        pop si
+        pop di
+
+        add di,16
+        add si,40
+
+        pop cx
+        loop wttable2_s3
+
+    mov cx,21
+    mov di,13
+    mov si,30
+    wttable2_s4:
+        push cx
+
+        mov ax,es:[di]
+        mov dx,0
+
+        push di
+        push si
+        call numToStr
+        pop si
+        pop di
+
+        add di,16
+        add si,40
+
+        pop cx
+        loop wttable2_s4
+
+    pop cx
+    ret   
+
+;功能：将临时数据写入存储器
+;入口参数：es：di指向临时数据，ds：si指向存储数据的地方
+;数据存储方式：“xxxx xxxx xx xx ”，共21行,从上面的data段中读取。
+;注：需要用到divdw
+wttable1:
+    push cx
+    push bx
+
+    mov cx,21
+    mov si,0
+    wttable1_s1:
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,2
+        add si,2
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,2
+        add si,14
+        loop wttable1_s1
+
+    mov cx,21
+    mov si,5
+    wttable1_s2:
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,2
+        add si,2
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,2
+        add si,14
+        loop wttable1_s2
+
+    mov cx,21
+    mov si,10
+    wttable1_s3:
+        mov ax,es:[di]
+        mov ds:[si],ax
+        add di,2
+        add si,16
+        loop wttable1_s3
+
+    mov cx,21
+    mov si,13
+    wttable1_s4:
+        push cx
+
+        mov bx,si
+        sub si,8
+        mov ax,ds:[si]
+        mov dx,ds:[si+2]
+        mov cx,ds:[si+5]
+        mov si,bx
+
+        call divdw
+        mov ds:[si],ax
+        add si,16
+
+        pop cx
+        loop wttable1_s4   
+
+    pop bx
+    pop cx
+    ret   
+
+;功能：将不大于32位的数字转变成字符串
+;入口参数:dx存数高16位，ax低16位，ds：si指向写入的地址
+;注：需要用到divdw
+;需改进：转变为字符串后，debug里用d查看时数字后面会有一个点，改进的时候可以把它去掉。不过打印在显示器上是没有点。
+numToStr:
+    push cx
+    mov cx,0
+    push cx
+
+    numToStr_s1:
+        mov cx,10
+        call divdw
+        add cx,30h
+        push cx
+        cmp dx,0
+        jne numToStr_s1
+        cmp ax,0
+        jne numToStr_s1
+
+    numToStr_s2:
+        pop cx
+        cmp cx,0
+        je numToStr_end
+        mov ds:[si],cx
+        inc si
+        jmp numToStr_s2
+
+numToStr_end:
+    pop cx
+    ret
+
+
+;功能：处理32位被除数除以16位除数
+;入口参数：dx、ax存32位数,cx除数
+;返回，dx商高位，ax商低位，cx余数
+
+;2^32 = 4 294 967 296；2^16 = 65 536
+;字操作：32位被除数放在DX,AX中。其中DX为高位字，16位除数为源操作数，结果的16位商在AX中，16位余数在DX中?
+divdw:
+    push bx
+    push ax
+
+    mov ax,dx
+    mov dx,0
+    div cx
+
+    mov bx,ax
+
+    pop ax
+    div cx
+
+    mov cx,dx
+    mov dx,bx
+
+    pop bx
+    ret
+
+code ends
+end start
