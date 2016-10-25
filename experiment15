@@ -1,0 +1,102 @@
+assume cs:code
+stack segment
+    db 128 dup (0)
+stack ends
+
+data segment
+    dw '0','0'
+data ends
+
+code segment
+start:
+    mov ax,stack
+    mov ss,ax
+    mov sp,128
+
+    mov ax,data
+    mov ds,ax
+
+    mov ax,0
+    mov es,ax
+
+    mov    ax,es:[9*4]
+    mov ds:[0],ax
+    mov ax,es:[9*4+2]
+    mov ds:[2],ax
+
+    cli
+    mov word ptr es:[9*4],offset int9
+    mov es:[9*4+2],cs
+    sti
+
+delay:               ;不知道delay时间到底多长，程序开始后一直不结束
+    push ax
+    push dx
+    mov dx,1000h
+    mov ax,0
+
+    delay_s:
+        sub ax,1
+        sbb dx,0
+        cmp ax,0
+        jne delay_s
+        cmp dx,0
+        jne delay_s
+
+    pop dx
+    pop ax
+
+    mov ax,0
+    mov es,ax
+
+    push ds:[0]
+    pop es:[9*4]
+    push ds:[2]
+    pop es:[9*4+2]
+
+    mov ax,4c00h
+    int 21h
+
+int9:
+    push es
+    push di
+
+    in al,60h
+
+    pushf
+
+    pushf
+    pop ax
+    and ah,11111100b
+    push ax
+    popf
+
+    call dword ptr ds:[0]
+
+    s:    in al,60h
+        cmp al,1eh
+        je s
+
+    s2:
+        in al,60h
+        cmp al,1eh+80h
+        jne int9end
+
+    mov cx,80*25          ;一共80列，不是160*25
+    mov ax,0b800h
+    mov es,ax
+    mov di,0
+    s3:
+        mov byte ptr es:[di],'A'
+        inc di
+        inc di
+        loop s3
+
+int9end:
+    pop di
+    pop es
+    iret
+
+code ends
+
+end start
