@@ -1,0 +1,25 @@
+其他：
+
+1、
+;显示以0结尾的字符串
+;名称:show_string
+;输入:bx行数，bp列数，cx颜色
+;输出:无
+;ds:si指向字符串，es:di指向vram
+show_string:
+        mov ax,08000h
+        mov es,ax
+        mov di,bx*160+bp*2
+
+    show_string_s1: 
+        mov al,ds:[si]
+        mov es:[di],al
+        mov es:[di+1],cx
+        add di,2
+        inc si
+        cmp ds:[si],0
+        jne show_string_s1
+
+        ret
+
+2、
