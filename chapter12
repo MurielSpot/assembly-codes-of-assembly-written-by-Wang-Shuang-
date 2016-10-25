@@ -1,0 +1,67 @@
+;12章，中断处理程序
+
+assume CS:CODE
+
+;data segment
+;    db "overflow!"
+;data ends
+;overflow字符不能另外放在这个段里，因为程序执行完成后返回，所占用的内存空间被系统释放，do0从原来程序处的data段取内容时，可能取出的是其他不明字符
+;正确写法如下
+
+CODE SEGMENT
+
+START:    ;do0 installation program
+        mov ax,cs   
+        mov ds,ax    ;ds:si source address
+        mov si,offset do0     ;使得程序更灵活，找到do0不依赖具体的地址而依据偏移值找到
+        mov ax,0
+        mov es,ax    ;es:di destination address
+        mov di,0200h
+
+        mov cx,offset do0end-offset do0     ;code length of do0 part equals:offset do0end - offset do0
+                                                                ;可以这样写offset do0end-offset do0
+        cld            ;set transmission direction as positive
+        rep movsb
+
+        mov ax,0    ;set interrupt vector table
+        mov es,ax
+        mov word ptr es:[0*4],200h
+        mov word ptr es:[0*4+2],0
+
+;除法溢出
+        mov ax,1000h
+        mov ch,1
+        div ch
+
+        mov ax,4c00h
+        int 21h
+
+do0:    ;show string "overflow"
+        jmp short do0start
+        db "overflow"
+
+do0start:
+        mov ax,cs    ;let ds:di point to character string
+        mov ds,ax
+        mov si,202h
+
+        mov ax,0b800h
+        mov es,ax
+        mov di,21*160+36*2    ;es:di points to the location of video memory
+                                             ;可以这样写21*160+36*2
+        mov cx,9
+    s:    mov al,[si]
+        mov es:[di],al
+        and byte ptr es:[di+1],00000010b
+        inc si
+        add di,2
+        loop s
+
+        mov ax,4c00h
+        int 21h
+
+do0end:    nop
+
+CODE ENDS
+
+END START
