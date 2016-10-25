@@ -1,0 +1,82 @@
+;13章
+;检测13.2（2）
+;用中断例程完成jmp near ptr s指令的中断
+
+assume cs:code
+
+data segment
+    db 'conversation',0
+data ends
+
+code segment
+
+start:
+        call interrupt_jmpnear
+
+        mov ax,data
+        mov ds,ax
+        mov si,0
+        mov ax,0b800h
+        mov es,ax
+        mov di,12*160
+
+    s:    cmp byte ptr [si],0
+        je ok
+        mov al,[si]
+        mov es:[di],al
+        inc si
+        add di,2
+        mov bx,offset s-offset ok
+        int 7ch
+
+    ok:    mov ax,4c00h
+        int 21h
+
+interrupt_jmpnear:
+    push ds
+    push si
+    push es
+    push di
+
+    ;安装
+    mov ax,cs
+    mov ds,ax
+    mov si,offset i_start
+    mov ax,0
+    mov es,ax
+    mov di,200h
+    mov cx,offset i_end-offset i_start
+    cld
+    rep movsb
+
+    ;设置中断向量表
+    mov ax,0
+    mov es,ax
+    mov word ptr es:[7ch*4],200h
+    mov word ptr es:[7ch*4+2],0
+
+    pop di
+    pop es
+    pop si
+    pop ds
+
+    ret
+
+;中断程序
+;用cx计数，cx为字符个
+;
+i_start:
+    ;转移指令主体
+    ;标志寄存器已压栈，cs先入栈，ip后
+    ;更改ip
+        push bp
+        mov bp,sp
+        add [bp+2],bx    ;注意此处bp是加2，不是4.因为相加时数据是往大地址写的，bp到bp+2存的原bp，bp+2到bp+4存的ip
+        pop bp
+        iret
+i_end:
+        nop
+
+code ends
+
+end start
