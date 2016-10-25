@@ -1,0 +1,5 @@
+;16章
+;检测点16.2
+
+mov ax,data
+mov es,ax
