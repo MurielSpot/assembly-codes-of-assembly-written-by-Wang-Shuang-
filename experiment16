@@ -1,0 +1,218 @@
+;新的int7ch中断例程
+;功能1：清屏；功能2：设置前景色；功能3：设置背景色；功能3：向上滚动一行
+;入口参数：ah传递功能号（具体如上），对于2、3号功能，al传递颜色值，al取0-7
+
+assume cs:code
+stack segment
+    db 128 dup (0)
+stack ends
+
+data segment
+    dw '0','0'
+data ends
+
+code segment
+table:    dw sub1,sub2,sub3,sub4
+start:
+        mov ax,0
+        mov ds,ax
+        mov bx,offset set
+        mov ds:[7ch*4],bx
+        mov ax,cs
+        mov ds:[7ch*4+2],cs
+
+        mov al,00110010b
+        mov ah,2
+
+        int 7ch
+
+        mov ax,4c00h
+        int 21h
+
+set:    push bx
+
+        cmp ah,3
+        ja sret
+        mov bl,ah
+        mov bh,0
+        add bx,bx
+
+        call word ptr table[bx]
+
+    sret:
+        pop bx
+
+        iret
+
+sub1:
+        push bx
+        push cx
+        push es
+        mov bx,0b800h
+        mov es,bx
+        mov bx,0
+
+        mov cx,2000
+    sub1s:
+        mov byte ptr es:[bx],' '
+        add bx,2
+        loop sub1s
+
+        pop es
+        pop cx
+        pop bx
+        ret
+
+sub2:
+        push bx
+        push cx
+        push es
+        mov bx,0b800h
+        mov es,bx
+        mov bx,1
+
+        mov cx,2000
+    sub2s:
+        and byte ptr es:[bx],01111000b
+        or es:[bx],al
+        add bx,2
+        loop sub2s
+
+        pop es
+        pop cx
+        pop bx
+        ret
+
+sub3:
+        push bx
+        push cx
+        push es
+        mov bx,0b800h
+        mov es,bx
+        mov bx,1
+
+        mov cx,2000
+    sub3s:
+        mov byte ptr es:[bx],00000111b
+        or es:[bx],al
+        add bx,2
+        loop sub3s
+
+        pop es
+        pop cx
+        pop bx
+        ret
+
+sub4:
+        push cx
+        push si
+        push di
+        push es
+        push ds
+
+        mov si,0b800h
+        mov es,si
+        mov ds,si
+        mov si,160
+        mov di,0
+        cld
+        mov cx,24
+
+    sub4s:
+        push cx
+        mov cx,160
+        rep movsb
+        pop cx
+        loop sub4s
+
+        mov cx,80
+        mov si,0
+    sub4s1:
+        mov byte ptr [160*24+si],' '
+        add si,2
+        loop sub4s1
+
+        pop ds
+        pop es
+        pop di
+        pop si
+        pop cx
+        ret
+
+code ends
+
+end start
+
+;--------------------------------------------
+;新的int7ch中断例程
+;功能1：通过逻辑扇区号对软盘进行读写
+;入口参数：ah传递功能号，0表示读，1表示写；bx传递扇区的逻辑扇区号；es：bx指向存储读出与写入数据的内存区
+
+;3.5英寸软盘，上下两面，每面80个磁道，每个磁道18个扇区，每个扇区512b。一个软盘1440k，大约等于1.44mb
+
+;int 13h访问磁盘
+;入口参数:ah存int13h的功能号（2表示读扇区）；al读取扇区数；ch磁道号，cl扇区号；dh磁头号，dl驱动器号。es：bx指向接收从扇区读入数据的内存区。
+;返回参数：成功：ah为0，al为读入扇区数；失败：ah为出错代码。
+
+assume cs:code
+
+data segment
+    dw 30000 dup (0)
+data ends
+
+code segment
+start:   
+        mov ax,0
+        mov es,ax
+        mov ax,offset int7ch
+        mov es:[7ch*4],ax
+        mov ax,cs
+        mov es:[7ch*4+2],ax
+
+        mov ax,data
+        mov es,ax
+
+        mov ah,0
+        mov al,1    ;al存读取的扇面数
+        mov bx,1443
+        int 7ch
+
+        mov ax,4c00h
+        int 21h
+
+int7ch:
+        push di
+        push ax
+
+        mov di,1440
+        call get_quotient_remainder
+        mov bx,dx
+        mov dh,al
+        push dx
+
+        mov di,18
+        call get_quotient_remainder          ;这一步会出错，执行div后cs改变了，不知道为什么
+        mov ch,al
+
+        inc dx
+        mov cl,dl
+
+        pop dx
+        mov dl,0
+        pop ax
+        add ah,2
+        mov bx,0
+        int 13h
+
+        pop di
+        iret
+
+get_quotient_remainder:
+    ;使用bx传递进逻辑扇区，移动到ax，将di设为除数，返回dx为余数，ax为商
+        mov ax,bx
+        div di   
+        ret
+
+code ends
+
+end start
