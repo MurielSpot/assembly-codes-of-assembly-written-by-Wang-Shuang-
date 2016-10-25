@@ -1,0 +1,195 @@
+实验13（1）
+assume cs:code,ds:data
+
+data segment
+    db "welcome to masm!",0
+data ends
+
+code segment
+
+start:    call interrupt_jmpnear
+
+        mov dh,10
+        mov dl,10
+        mov cl,2
+        mov ax,data
+        mov ds,ax
+        mov si,0
+        int 7ch
+        mov ax,4c00h
+        int 21h
+
+interrupt_jmpnear:
+    push ds
+    push si
+    push es
+    push di
+
+    ;安装
+    mov ax,cs
+    mov ds,ax
+    mov si,offset i_start
+    mov ax,0
+    mov es,ax
+    mov di,200h
+    mov cx,offset i_end-offset i_start
+    cld
+    rep movsb
+
+    ;设置中断向量表
+    mov ax,0
+    mov es,ax
+    mov word ptr es:[7ch*4],200h
+    mov word ptr es:[7ch*4+2],0
+
+    pop di
+    pop es
+    pop si
+    pop ds
+
+    ret
+
+;中断程序
+;ds:si指向数据，es:di指向显存
+;
+i_start:
+    ;转移指令主体
+    ;标志寄存器已压栈，cs先入栈，ip后
+    ;更改ip
+        mov ax,data
+        mov ds,ax
+        mov si,0
+        mov ax,0b800h
+        mov es,ax
+        mov ax,160
+        mul dh
+        mov di,ax
+        push dx
+        mov dh,0
+        add di,dx
+        pop dx
+    i_s:mov al,ds:[si]
+        cmp al,0
+        je i_return
+        mov es:[di],al
+        mov es:[di+1],cl
+        inc si
+        add di,2
+        jmp i_s
+    i_return:   
+        iret
+i_end:
+        nop
+
+
+code ends
+
+end start
+
+实验13（2）
+assume cs:code
+
+code segment
+
+start:    call interrupt_jmpnear
+
+        mov ax,0b800h
+        mov es,ax
+        mov di,160*12
+        mov bx,offset s-offset se
+        mov cx,4
+    s:    mov byte ptr es:[di],'!'
+        add di,2
+        int 7ch
+    se: nop
+        mov ax,4c00h
+        int 21h
+
+interrupt_jmpnear:
+    push ds
+    push si
+    push es
+    push di
+
+    ;安装
+    mov ax,cs
+    mov ds,ax
+    mov si,offset i_start
+    mov ax,0
+    mov es,ax
+    mov di,200h
+    mov cx,offset i_end-offset i_start
+    cld
+    rep movsb
+
+    ;设置中断向量表
+    mov ax,0
+    mov es,ax
+    mov word ptr es:[7ch*4],200h
+    mov word ptr es:[7ch*4+2],0
+
+    pop di
+    pop es
+    pop si
+    pop ds
+
+    ret
+
+;中断程序
+;ds:si指向数据，es:di指向显存
+;
+i_start:
+    ;转移指令主体
+    ;标志寄存器已压栈，cs先入栈，ip后
+    ;更改ip
+        dec cx
+        jcxz i_return
+        push bp
+        mov bp,sp
+        add [bp+2],bx
+        pop bp
+    i_return:
+        iret
+i_end:
+        nop
+
+code ends
+
+end start
+
+实验13（3）
+assume cs:code
+
+code segment
+    s1: db 'Good,btter,best,','$'
+    s2: db 'Never let it rest,','$'
+    s3: db 'Till good is better,','$'
+    s4: db 'And better,best','$'
+    s : dw offset s1,offset s2,offset s3,offset s4
+    row:db 2,4,6,8
+    ;注意：含有冒号的标号只能在代码段中使用，不能在其他段中使用
+
+start:    mov ax,cs
+        mov ds,ax     ;这里ds我用es代替，后面【si】【bx】前都加上es段地址，结果显示出许多乱码，为什么？
+                            ;后来查看了一下ah=9时，int 21h的用法，发现字符串要用ds：dx指向！！！！
+        mov bx,offset s
+        mov si,offset row
+        mov cx,4
+    ok:    mov bh,0
+        mov dh,[si]
+        mov dl,0
+        mov ah,2
+        int 10h
+
+        mov dx,[bx]
+        mov ah,9
+        int 21h
+
+        add bx,2
+        inc si
+        loop ok
+        mov ax,4c00h
+        int 21h
+code ends
+
+end start
