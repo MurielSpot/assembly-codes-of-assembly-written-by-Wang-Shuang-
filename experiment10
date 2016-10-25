@@ -1,0 +1,149 @@
+assume cs:code
+
+data segment
+    db 'welcome to masm!',0
+data ends
+
+code segment
+start:    mov dh,8    ;dh表示行
+        mov dl,3    ;dl表示列
+        mov cl,5    ;cx已用,表示颜色
+        mov ax,data
+        mov ds,ax    ;ds已用
+        mov si,0    ;si用来表示字符偏移位置
+        call show_str
+
+        mov ax,4c00h
+        int 21h
+
+show_str:    ;push dx
+
+            mov di,0
+        s1:    add di,160    ;循环将显示移到指定行
+            dec dh
+            cmp dh,0
+            jne s1
+
+            add dl,dl
+            add di,dx    ;di指向要打印的位置
+
+            mov ax,0b800h
+            mov es,ax
+        s2:    mov al,ds:[si]
+            mov es:[di],al
+            mov es:[di+1],cl
+            add di,2
+            inc si
+            cmp ds:[si],byte ptr 0
+            jne s2
+
+            ;pop dx
+            ret
+code ends
+
+end start
+
+;-----------------------------------
+;解决除法溢出问题
+assume cs:code
+
+code segment
+
+start:    mov ax,4240h    ;low 16 of devidend
+        mov dx,000fh    ;high 16 of devidend
+        mov cx,0ah    ;divisor
+
+        call divdw
+        mov ax,4c00h
+        int 21h
+
+divdw:    mov di,ax    ;save low16
+        mov ax,dx    ;SAVE HIGH16
+
+        mov dx,0
+        div cx
+
+        push ax    ;save quotient
+
+        mov ax,di
+        div cx    ;remainder in dx
+
+        mov cx,dx
+        pop dx
+
+        ret
+
+code ends
+
+end start
+;show numerical value
+
+assume cs:code
+
+data segment
+    db 10 dup(0)
+data ends
+
+code segment
+
+start:    mov ax,12666
+        mov bx,data
+        mov ds,bx
+        mov si,0
+        call dtoc
+
+        mov dh,8
+        mov dl,3
+        mov cl,2
+        call show_str
+
+        mov ax,4c00h
+        int 21h
+
+dtoc:    mov cx,0
+        mov dx,0
+        mov di,10
+    s1:    div di
+        add dx,30h
+        push dx
+        mov dx,0
+        inc cx
+        cmp ax,0
+        jne s1
+
+    s2:    pop ds:[si]
+        inc si
+        loop s2
+
+        mov ds:[si],byte ptr 0
+        mov si,0
+        ret
+
+show_str:   ;push dx
+
+            mov di,0
+        s3: add di,160   ;循环将显示移到指定行
+            dec dh
+            cmp dh,0
+            jne s3
+
+            add dl,dl
+            add di,dx    ;di指向要打印的位置
+
+            mov ax,0b800h
+            mov es,ax
+        s4: mov al,ds:[si]
+            mov es:[di],al
+            mov es:[di+1],cl
+            add di,2
+            inc si
+            cmp ds:[si],byte ptr 0
+            jne s4
+
+            ;pop dx
+            ret
+
+
+code ends
+
+end start
